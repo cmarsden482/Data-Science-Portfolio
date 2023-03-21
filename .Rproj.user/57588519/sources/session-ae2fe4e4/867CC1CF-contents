@@ -1,0 +1,238 @@
+#############################################################################
+# Set up
+#############################################################################
+
+# Load data
+library(mlbench)
+library(caret)
+set.seed(2)
+data(BreastCancer)
+
+# Remove ID column
+BreastCancer <- BreastCancer[,-1]
+
+# Fix theNA values in bare.nucleii
+BreastCancer <- na.omit(BreastCancer) 
+
+# partition the data set for 80% training and 20% evaluation (adapted from ?randomForest)
+ind <- sample(2, nrow(BreastCancer), replace = TRUE, prob=c(0.8, 0.2))
+
+
+# set up accuracy data frame
+accuracy.df <- data.frame(model.name = c("Neural Network", "knn", "svm", "Recursion Tree", "results"), accuracy = rep(0,5))
+
+# Set up ensemble data frame
+ensemble.df <- data.frame(record.num = seq(1, nrow(BreastCancer[ind == 2,]), 1))
+
+#############################################################################
+# Neural Net
+#############################################################################
+
+
+# Set up Neural Network
+library(nnet)
+# use a copy of the data frame to convert all factors to dummy variables
+num.BreastCancer <- BreastCancer
+for (i in 1:ncol(BreastCancer)){
+  num.BreastCancer <- cbind(num.BreastCancer, as.data.frame(class.ind(num.BreastCancer[,i])))
+}
+
+
+# Remove the factors from the data frame
+num.BreastCancer <- num.BreastCancer[,-c(1:10)]
+
+# rename the columns so that the names don't start with a number
+colnames(num.BreastCancer) <- c("Cl.thickness.1", "Cl.thickness.2", "Cl.thickness.3", "Cl.thickness.4", "Cl.thickness.5", "Cl.thickness.6", "Cl.thickness.7", "Cl.thickness.8", "Cl.thickness.9", "Cl.thickness.10", "Cell.size.1", "Cell.size.2", "Cell.size.3", "Cell.size.4", "Cell.size.5", "Cell.size.6", "Cell.size.7", "Cell.size.8", "Cell.size.9", "Cell.size.10", "Cell.shape.1", "Cell.shape.2", "Cell.shape.3", "Cell.shape.4", "Cell.shape.5", "Cell.shape.6", "Cell.shape.7", "Cell.shape.8", "Cell.shape.9", "Cell.shape.10", "Marg.adhesion.1", "Marg.adhesion.2", "Marg.adhesion.3", "Marg.adhesion.4", "Marg.adhesion.5", "Marg.adhesion.6", "Marg.adhesion.7", "Marg.adhesion.8", "Marg.adhesion.9", "Marg.adhesion.10", "Epith.c.size.1", "Epith.c.size.2", "Epith.c.size.3", "Epith.c.size.4", "Epith.c.size.5", "Epith.c.size.6", "Epith.c.size.7", "Epith.c.size.8", "Epith.c.size.9", "Epith.c.size.10", "Bare.nuclei.1", "Bare.nuclei.2", "Bare.nuclei.3", "Bare.nuclei.4", "Bare.nuclei.5", "Bare.nuclei.6", "Bare.nuclei.7", "Bare.nuclei.8", "Bare.nuclei.9", "Bare.nuclei.10", "Bl.cromatin.1", "Bl.cromatin.2", "Bl.cromatin.3", "Bl.cromatin.4", "Bl.cromatin.5", "Bl.cromatin.6", "Bl.cromatin.7", "Bl.cromatin.8", "Bl.cromatin.9", "Bl.cromatin.10", "Normal.nucleoli.1", "Normal.nucleoli.2", "Normal.nucleoli.3", "Normal.nucleoli.4", "Normal.nucleoli.5", "Normal.nucleoli.6", "Normal.nucleoli.7", "Normal.nucleoli.8", "Normal.nucleoli.9", "Normal.nucleoli.10", "Mitoses.1", "Mitoses.2", "Mitoses.3", "Mitoses.4", "Mitoses.5", "Mitoses.6", "Mitoses.7", "Mitoses.8", "Mitoses.10", "benign", "malignant")
+
+###### Run neural network
+
+# set up neural net training and test sets
+library(neuralnet)
+# Run the neural net
+nn <- neuralnet(benign + malignant ~ ., data = num.BreastCancer[ind == 1,], hidden = 2)
+
+# see training results
+training.prediction <- neuralnet::compute(nn, num.BreastCancer[ind == 1,])
+training.class <- apply(training.prediction$net.result, c(1), which.max)-1
+
+cm <- confusionMatrix(as.factor(training.class), as.factor(num.BreastCancer[ind==1, "malignant"]))
+
+# Compare to test set
+testing.prediction <- neuralnet::compute(nn, num.BreastCancer[ind == 2,])
+testing.class <- apply(testing.prediction$net.result, c(1), which.max)-1
+
+cm <- confusionMatrix(as.factor(testing.class), as.factor(num.BreastCancer[ind==2, "malignant"]))
+
+# Record accuracy in accuracy data frame
+accuracy.df[1,2] <- cm$overall[1]
+
+# add testing results to ensemble df
+ensemble.df$Neural.Network <- as.list(testing.class)
+
+
+
+
+
+
+
+
+
+
+
+
+
+#############################################################################
+# KNN
+#############################################################################
+# Set up knn
+library(FNN)
+
+t(t(names(num.BreastCancer)))
+
+# Remove the "benign" label to focus on the malignant ones
+knn.BC.df <- num.BreastCancer[,-c(90)]
+
+# set up an accuracy df for testing values of k
+acc.knn <- data.frame (k = seq(1, 20, 1), accuracy = rep(0,20))
+
+
+# Run the knn model and store the accuracy for different values of k
+for (i in 1:20){
+  knn.mod <- knn(train = knn.BC.df[ind == 1, -90 ], test = knn.BC.df[ind == 2, -90 ],
+               cl = knn.BC.df[ind == 1, 90], k = i)
+  acc.knn[i,2] <- confusionMatrix(knn.mod, as.factor(knn.BC.df[ind == 2, 90]))$overall[1]
+}
+
+# save plot for output
+png("knn_accuracy.png")
+knn_accuracy <- ggplot(data = acc.knn, aes(x = k, y = accuracy)) + geom_point()
+print(knn_accuracy)
+dev.off()
+
+# The model is most accurate for k = 5
+knn.mod <- knn(train = knn.BC.df[ind == 1, -90 ], test = knn.BC.df[ind == 2, -90 ],
+               cl = knn.BC.df[ind == 1, 90], k = 5)
+
+# Save accuracy to accuracy df
+accuracy.df[2, "accuracy"] <- confusionMatrix(knn.mod, as.factor(knn.BC.df[ind == 2, 90]))$overall[1]
+
+# save prediction to ensemble
+preds <- knn.mod[1:nrow(num.BreastCancer[ind ==2,])]
+
+
+ensemble.df$knn  <- ifelse(preds == "1", 1, 0) # This preserves a 1 meaning malignant
+
+
+
+
+
+                           
+                           
+
+
+#############################################################################
+# SVM
+#############################################################################
+
+# Set up svm
+# create model using svm (support vector machine)
+library(e1071)
+
+# svm requires tuning
+svm.tune <- tune(svm, Class~., data = BreastCancer[ind == 1,],
+                   ranges = list(gamma = 2^(-8:1), cost = 2^(0:4)),
+                   tunecontrol = tune.control(sampling = "fix"))
+# display the tuning results (in text format)
+svm.tune
+# If the tuning results are on the margin of the parameters (e.g., gamma = 2^-8), 
+# then widen the parameters.
+# I manually copied the cost and gamma from console messages above to parameters below.
+svm.train <- svm(Class~., data = BreastCancer[ind == 1,], cost=1, gamma=0.0625, probability = TRUE)
+svm.prob <- predict(svm.train, type="prob", newdata=BreastCancer[ind == 2,], probability = TRUE)
+
+
+# add accuracy measure to accuracy.df
+accuracy.df[3,2] <- confusionMatrix(svm.prob, BreastCancer[ind ==2, "Class"], positive = "malignant")$overall[1]
+
+# add predictions to ensemble
+svm.pred <- ifelse(attr(svm.prob, "probabilities")[,2] > attr(svm.prob, "probabilities")[,1], 1, 0)
+
+ensemble.df$svm <- svm.pred
+ensemble.df
+
+
+
+#############################################################################
+# DECISION TREE
+#############################################################################
+
+# Set up decision tree
+library(rpart)
+x.rp <- rpart(Class ~ ., data=BreastCancer[ind == 1,])
+# predict classes for the evaluation data set
+x.rp.pred <- predict(x.rp, type="class", newdata=BreastCancer[ind == 2,])
+# score the evaluation data set (extract the probabilities)
+x.rp.prob <- predict(x.rp, type="prob", newdata=BreastCancer[ind == 2,])
+
+
+# add accuracy to accuracy.df
+accuracy.df[4, 2] <- confusionMatrix(as.factor(x.rp.pred), BreastCancer[ind==2, "Class"], positive = "malignant")$overall[1]
+
+# add predictions to ensemble
+ensemble.df$Recursive.Partioning <- ifelse(x.rp.pred=="malignant", 1,0)
+
+
+
+
+
+
+
+
+#############################################################################
+# Ensemble
+#############################################################################
+
+# This function will allow us to get the statistical mode of a set of data
+# If there are only two "malignants" in a row, this function will return a "malignant" answer
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+
+
+# Create ensemble 
+ensemble.df <- ensemble.df[,-1]
+
+ensemble.df[,1] <- as.numeric(ensemble.df[,1])
+ensemble.df[,2] <- as.numeric(ensemble.df[,2])
+ensemble.df[,3] <- as.numeric(ensemble.df[,3])
+ensemble.df[,4] <- as.numeric(ensemble.df[,4])
+
+
+
+results <- data.frame(result = rep(0, nrow(ensemble.df)))
+
+dim(results)
+
+for (i in 1:nrow(ensemble.df)){
+  results[i, "result"] <- Mode(ensemble.df[i,])
+}
+
+
+
+accuracy.df[5,2] <- confusionMatrix(as.factor(results$result), as.factor(num.BreastCancer[ind == 2, "malignant"]))$overall[1]
+
+# The way this will work is that we will take the prediction that is most voted for. In the event of a tie, we will vote as malignant (1). 
+
+
+# Put together accuracy measures
+library(ggplot2)
+
+s <- accuracy.df[5,]
+png("accuracy_results.png")
+accuracy.results <- ggplot(data = accuracy.df[-5,], aes(x = model.name, y = accuracy)) + geom_point() + geom_point(data = s, color="red", size = 3) + theme_minimal()
+print(accuracy.results)
+dev.off()
+
+
