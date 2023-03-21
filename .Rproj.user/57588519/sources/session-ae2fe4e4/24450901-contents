@@ -2,17 +2,25 @@
 title: "Final Project"
 author: "Cameron Marsden"
 date: "`r Sys.Date()`"
-output: word_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This file is the result of a quarter learning about data mining methodologies. 
+# Introduction
+
+This file is the result of a quarter learning about data mining methodologies. The code is left in its original format to provide transparency and show how the work was accomplished. It is split into two parts. 
+
+Part one deals with the creation of the models. Part two deals with the creation of the ensemble and accuracy measures. All graphs from this document are available as .png files in the github repository. 
 
 
-```{r}
+# Part 1
+
+```{r Part 1}
 #load the mlbench package which has the BreastCancer data set
 require(mlbench)
 
@@ -91,9 +99,12 @@ x.svm.prob <- predict(x.svm, type="prob", newdata=BreastCancer[ind == 2,], proba
 
 # add results to results df
 results$svm <- ifelse(as.data.frame(attr(x.svm.prob, "probabilities"))$benign < as.data.frame(attr(x.svm.prob, "probabilities"))$malignant, 1, 0)
+```
 
 
+# Part 2
 
+```{r Part 2}
 ## ENSEMBLE CREATION
 # Mode function will find the mode of a row
 Mode <- function(x) {
@@ -159,9 +170,6 @@ plot(x.svm.perf, col=6, add=TRUE)
 
 # Close and save the PNG file.
 dev.off()
-
-
-
 
 ```
 
