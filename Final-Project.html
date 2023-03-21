@@ -1631,7 +1631,15 @@ display: none;
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p>This file is the result of a quarter learning about data mining
-methodologies.</p>
+methodologies. The code is left in its original format to provide
+transparency and show how the work was accomplished. It is split into
+two parts.</p>
+<p>Part one deals with the creation of the models. Part two deals with
+the creation of the ensemble and accuracy measures. All graphs in this
+document are available as .png files in the github repository.</p>
+</div>
+<div id="part-1" class="section level1">
+<h1>Part 1</h1>
 <pre class="r"><code>#load the mlbench package which has the BreastCancer data set
 require(mlbench)</code></pre>
 <pre><code>## Loading required package: mlbench</code></pre>
@@ -1731,11 +1739,11 @@ x.svm.prob &lt;- predict(x.svm, type=&quot;prob&quot;, newdata=BreastCancer[ind 
 
 
 # add results to results df
-results$svm &lt;- ifelse(as.data.frame(attr(x.svm.prob, &quot;probabilities&quot;))$benign &lt; as.data.frame(attr(x.svm.prob, &quot;probabilities&quot;))$malignant, 1, 0)
-
-
-
-## ENSEMBLE CREATION
+results$svm &lt;- ifelse(as.data.frame(attr(x.svm.prob, &quot;probabilities&quot;))$benign &lt; as.data.frame(attr(x.svm.prob, &quot;probabilities&quot;))$malignant, 1, 0)</code></pre>
+</div>
+<div id="part-2" class="section level1">
+<h1>Part 2</h1>
+<pre class="r"><code>## ENSEMBLE CREATION
 # Mode function will find the mode of a row
 Mode &lt;- function(x) {
   ux &lt;- unique(x)
@@ -1782,6 +1790,9 @@ library(caret)</code></pre>
 ##                                           
 ##        &#39;Positive&#39; Class : malignant       
 ## </code></pre>
+<p>This confusion matrix shows a high accuracy, sensitivity, and
+specificity from the ensemble data model that could be used in a
+production environment.</p>
 <pre class="r"><code>##
 ## plot ROC curves to compare the performance of the individual classifiers
 ##

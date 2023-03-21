@@ -123,8 +123,11 @@ results$vote <- as.factor(ifelse(results$vote == 1, "malignant", "benign"))
 # Here is the accuracy of the ensemble. 1 means "malignant"
 library(caret)
 confusionMatrix(results$vote, BreastCancer[ind == 2, "Class"], positive = "malignant")
+```
 
+This confusion matrix shows a high accuracy, sensitivity, and specificity from the ensemble data model that could be used in a production environment. 
 
+```{r Part 2.5}
 ##
 ## plot ROC curves to compare the performance of the individual classifiers
 ##
